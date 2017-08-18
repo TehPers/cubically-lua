@@ -18,9 +18,9 @@ Codepage.chars = {
      "₀", "₁", "₂", "₃", "₄", "₅", "₆", "₇", "₈", "₉", "ⁿ", "√", "ṡ", "ċ", "Ṡ", "Ċ", -- 8_
      "⁰", "¹", "²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹", "¬", "«", "»", nil, nil, nil, -- 9_
      "𝟘", "𝟙",  "𝟚", "𝟛", "𝟜", "𝟝", "𝟞",  "𝟟", "𝟠", "𝟡", "■", "ƒ", nil, nil, nil, nil, -- A_
-     "½", "ρ", nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, -- B_
-     nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, -- C_
-     nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, -- D_
+     "½", "π", "φ", "𝑒", nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, -- B_
+     "ρ", "𝔸", "𝕒", nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, -- C_
+     "𝐶", nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, -- D_
      nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, -- E_
      nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, -- F_
 }
@@ -181,12 +181,60 @@ function Codepage:constarg(char, index)
   
   if char >= 0xA0 and char < 0xAA then
     local r = char - 0xA0
-    return index and tonumber(r .. index) or r 
+    return index and tonumber(r .. index) or r
   elseif char == 0x27 then
     -- Treat each apostrophe as a 3
     return 3
   elseif char == 0xB0 then
+    -- Fraction
     return 1 / (index or 2)
+  elseif char == 0xB1 then
+    -- pi
+    return 3.141592653589793
+  elseif char == 0xB2 then
+    -- phi
+    return 1.618033988749894 -- rounds to 5, truncates to 4
+  elseif char == 0xB3 then
+    -- e
+    return 2.718281828459045
+  elseif char > 0x100 then
+    -- Character set
+    return self:charset(char - 0x100, index)
+  end
+end
+
+function Codepage:charset(char, index)
+  if type(char) == "string" then
+    char = Codepage.bytes[char]
+  end
+  
+  -- TODO: codepage
+  -- Note: ASCII is already default, no need for a charset for it
+  
+  if char == 0x44 or char == 0x64 then
+    -- Digits
+    if not index then
+      return
+    elseif index < 0 or index > 9 or index % 1 ~= 0 then
+      return 0
+    end
+    return index + 0x30
+  elseif char == 0x41 then
+    -- Uppercase
+    if not index then
+      return
+    elseif index < 0 or index > 25 or index % 1 ~= 0 then
+      return 0
+    end
+    return index + 0x41
+  elseif char == 0x61 then
+    -- Lowercase
+    if not index then
+      return
+    elseif index < 0 or index > 25 or index % 1 ~= 0 then
+      return 0
+    end
+    return index + 0x61
   end
 end
 

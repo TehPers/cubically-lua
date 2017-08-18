@@ -33,8 +33,7 @@ function C:exec(program)
   self.command = nil
   self.commandIndex = nil
   while self.ptr <= #self.program do
-    local c, index = self:next()
-    local b = self.codepage.bytes[c]
+    local b, index = self:next()
     local ptr = self.ptr
     
     if self.codepage:facearg(b, index) then
@@ -83,7 +82,7 @@ function C:exec(program)
 end
 
 function C:next()
-  local c = self:nextChar()
+  local b = self:nextChar()
   local index = nil
   local ptr = self.ptr
   local cur = self:nextChar()
@@ -103,17 +102,17 @@ function C:next()
   end
   self.ptr = ptr
   
-  return c, tonumber(index)
+  return b, tonumber(index)
 end
 
 function C:nextChar()
   local c = self.program[self.ptr]
   if c == "\\" then
+    -- Escape sequence
     local charsLeft = 2
     local hex = 0
     self.ptr = self.ptr + 1
     local cur = self.program[self.ptr]
-    local b = c:byte(1)
     while cur and charsLeft > 0 and self.codepage:hex(cur) do
       hex = hex * 16 + self.codepage:hex(cur)
       
@@ -121,11 +120,17 @@ function C:nextChar()
       cur = self.program[self.ptr]
       charsLeft = charsLeft - 1
     end
-    c = self.codepage.chars[hex]
+    return hex
+  elseif c == "𝐶" then
+    -- Character set
+    self.ptr = self.ptr + 1
+    local cur = self.program[self.ptr]
+    self.ptr = self.ptr + 1
+    return cur and self.codepage.bytes[cur] + 0x100 or -1
   else
     self.ptr = self.ptr + 1
   end
-  return c
+  return self.codepage.bytes[c]
 end
 
 function C:skipcmd()
@@ -144,7 +149,7 @@ function C:skipcmd()
       end
       
       ptr = self.ptr
-      c = self:next()
+      c = self.codepage.chars[self:next()]
     until self.ptr > #self.program or (level == 0 and not self.codepage:facearg(c) and not self.codepage:constarg(c))
   until not extraSkip
   self.ptr = ptr
@@ -359,16 +364,33 @@ C.commands = {
     self.cube:setFace(self.commandIndex, n)
   end,
   
-  ['p'] = function(self, n)
-    n = n or self.notepad
-    local sqrt = math.sqrt(n)
-    for i = 2, sqrt do
-      if i % n == 0 then
-        self.notepad = 0
-        return
+  ['ρ'] = function(self, n)
+    local function isPrime(n)
+      local sqrt = math.sqrt(n)
+      for i = 2, sqrt do
+        if n % i == 0 then
+          return false
+        end
       end
+      return true
     end
-    self.notepad = 1
+    
+    local iterator
+    if n then
+      -- Make `iterator` iterate through prime factors of `n` such that `1 < f < n`, where `f` is the factor
+      iterator = n % 1 == 0 and table.range(2, n - 1):where(function(i) return n % i == 0 end) or table.iterator(function() end)
+    else
+      -- Make `iterator` iterate through all prime factors greater than 1
+      local i = 1
+      iterator = table.iterator(function()
+        i = i + 1
+        return i
+      end)
+    end
+    iterator = iterator:where(function(n) return isPrime(n) end)
+    
+    iterator:skip(self.commandIndex or 0)
+    self.notepad = iterator() or 0
   end,
   
   ['`'] = function(self, n)
