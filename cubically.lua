@@ -260,7 +260,7 @@ C.commands = {
   
   ['.'] = function(self, n)
     if not n or n ~= 0 then
-      self.program = {}
+      self.ptr = #self.program + 1
     end
   end, 
   ['('] = function(self, n)
