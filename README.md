@@ -48,22 +48,22 @@ interpreter:exec("#") -- You can put any program here. This is an experimental c
   - `!?6{...}` is equivalent to `!6{...}`.
   
 ### Notes on code blocks
-  - `{%6%7:7}` is a code block
+  - `{"6"7:7}` is a code block
   - `?6&` is a code block
   - `+510` is a code block
-  - The code blocks in `+41?6{-3%7}!{-4%6}(%6-1)6` are:
+  - The code blocks in `+41?6{-3"7}!{-4"6}("6-1)6` are:
     - `+41`
-    - `?6{-3%7}`
+    - `?6{-3"7}`
       - `?6`
-      - `{-3%7}`
+      - `{-3"7}`
         - `-3`
-        - `%7`
+        - `"7`
     - `!`
-    - `{-4%6}`
+    - `{-4"6}`
       - `-4`
-      - `%6`
+      - `"6`
     - `(`
-    - `%6`
+    - `"6`
     - `-1`
     - `)6`
 
