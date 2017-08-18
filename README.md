@@ -35,7 +35,7 @@ interpreter:exec("#") -- You can put any program here. This is an experimental c
 - `!` - Executes next command/block only if code was just skipped due to a condition failing. If arguments are supplied and none of them evaluate to truthy, the next command/block will be skipped.
 
 ### Examples
-  - Print notepad only if notepad is truthy: `?6%6`
+  - Print notepad only if notepad is truthy: `?6"6`
   - Execute code only if notepad is truthy or input is truthy, otherwise execute different code: `?67{...}!{...}`
   - Execute code only if notepad is truthy and input is truthy, otherwise execute different code if side 0 is truthy: `?6?7{...}!0{...}`
   - Execute code only if notepad is truthy, otherwise execute different code if input is truthy and side 0 is truthy, otherwise execute different code: `?6{...}!7?0{...}!{...}`
