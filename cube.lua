@@ -17,8 +17,14 @@ function Cube.new(size)
   faces.F = faces[2]
   faces.B = faces[4]
 
+  local faceValues = {}
+  for i = 0, 5 do
+    faceValues[i] = i
+  end
+
   return setmetatable({
     faces = faces,
+    faceValues = faceValues,
     size = size,
     sizeSquared = sizeSquared
   }, {
@@ -32,7 +38,7 @@ function Cube:index(x, y)
 end
 
 function Cube:solved()
-  return self:value(0) == 0 and self:value(1) == 18 and self:value(2) == 27
+  return self:value(0) == 0 and self:value(1) == self.size ^ 2 and self:value(2) == 2 * self.size ^ 2
 end
 
 local function rotateFace(cube, face)
@@ -63,6 +69,7 @@ end
 
 function Cube:R(n, depth)
   n = n % 4
+  depth = depth or 0
   if depth < 0 or depth >= self.size then
     return
   end
@@ -89,6 +96,7 @@ end
 
 function Cube:L(n, depth)
   n = n % 4
+  depth = depth or 0
   if depth < 0 or depth >= self.size then
     return
   end
@@ -115,6 +123,7 @@ end
 
 function Cube:U(n, depth)
   n = n % 4
+  depth = depth or 0
   if depth < 0 or depth >= self.size then
     return
   end
@@ -141,6 +150,7 @@ end
 
 function Cube:D(n, depth)
   n = n % 4
+  depth = depth or 0
   if depth < 0 or depth >= self.size then
     return
   end
@@ -167,6 +177,7 @@ end
 
 function Cube:F(n, depth)
   n = n % 4
+  depth = depth or 0
   if depth < 0 or depth >= self.size then
     return
   end
@@ -194,6 +205,7 @@ end
 
 function Cube:B(n, depth)
   n = n % 4
+  depth = depth or 0
   if depth < 0 or depth >= self.size then
     return
   end
@@ -218,14 +230,27 @@ function Cube:B(n, depth)
   end
 end
 
-function Cube:value(n)
-  if n < 0 or n > 5 or n % 1 ~= 0 then
+function Cube:setFace(index, n)
+  if not index or index < 0 or index > 5 or index % 1 ~= 0 then
+    return
+  end
+  n = n or index
+  self.faceValues[index] = n
+end
+
+function Cube:value(n, index)
+  if not n or n < 0 or n > 5 or n % 1 ~= 0 then
     return 0
+  end
+  
+  if index then
+    local f = self.faces[n][index]
+    return f and self.faceValues[f] or 0
   end
   
   local sum = 0
   for i = 0, self.sizeSquared - 1 do
-    sum = sum + self.faces[n][i]
+    sum = sum + self.faceValues[self.faces[n][i]]
   end
   return sum
 end
@@ -236,7 +261,7 @@ function Cube:tostring()
   for y = 0, size - 1 do
     s = s .. (" "):rep(size)
     for x = 0, size - 1 do
-      s = s .. self.faces.U[self:index(x, y)]
+      s = s .. self:value(0, self:index(x, y))
     end
     s = s .. "\n"
   end
@@ -244,7 +269,7 @@ function Cube:tostring()
   for y = 0, size - 1 do
     for i = 1, 4 do
       for x = 0, size - 1 do
-        s = s .. self.faces[i][self:index(x, y)]
+        s = s .. self:value(i, self:index(x, y))
       end
     end
     s = s .. "\n"
@@ -253,7 +278,7 @@ function Cube:tostring()
   for y = 0, size - 1 do
     s = s .. (" "):rep(size)
     for x = 0, size - 1 do
-      s = s .. self.faces.D[self:index(x, y)]
+      s = s .. self:value(5, self:index(x, y))
     end
     s = s .. "\n"
   end

@@ -1,51 +1,56 @@
 require("cube")
 require("iterators")
+require("codepage")
 
 -- Interpreter
 local C = {}
 
-C.codepage = require("codepage")
-
 function C.new(options)
   options = (type(options) == "table") and options or {}
   
-  return setmetatable({
+  local cubically = setmetatable({
     cube = Cube.new(options.size),
     notepad = 0,
     input = 0,
     options = options
   }, {__index = C})
+
+  cubically.codepage = Codepage.new(cubically)
+  
+  return cubically
 end
 
 function C:exec(program)
   assert(self.cube, "Must be an instance, call new() first")
   assert(type(program) == "string", "program must be a string")
   
-  self.program = self.codepage.tochars(self.codepage.utf8bytes(program))
+  self.program = self.codepage:tochars(self.codepage:utf8bytes(program))
   self.ptr = 1
   self.loops = {}
   self.conditionFailed = false
   self.doElse = false
   self.didCommand = false
   self.command = nil
-  self.subscript = 0
+  self.commandIndex = nil
   while self.ptr <= #self.program do
-    local c = self.program[self.ptr]
+    local c, index = self:next()
     local b = self.codepage.bytes[c]
     local ptr = self.ptr
     
-    if self.codepage.digit(b) then
-      -- Command argument
-      
+    if self.codepage:facearg(b, index) then
+      -- Face-valued command argument
       if self.command then
-        self:command(self.codepage.digit(b))
+        self:command(self.codepage:facearg(b, index))
         self.didCommand = true
         self.doElse = false
       end
-    elseif self.codepage.subscript(b) then
-      -- Layer selection
-      
-      self.subscript = self.subscript * 10 + self.codepage.subscript(b)
+    elseif self.codepage:constarg(b, index) then
+      -- Constant command argument
+      if self.command then
+        self:command(self.codepage:constarg(b, index))
+        self.didCommand = true
+        self.doElse = false
+      end
     elseif self.conditionFailed then
       -- Command being skipped by a conditional
       
@@ -56,22 +61,20 @@ function C:exec(program)
       -- Command
       
       if self.command and not self.didCommand then
+        -- Implicitly call the command
         self:command()
         self.didCommand = true
         self.doElse = false
       end
       
       if self.ptr == ptr then
-        self.command = self.commands[c] or (self.options.experimental and self.experimental[c] or nil)
-        self.subscript = 0
+        -- Call the current command if the pointer didn't move
+        self.command = self.commands[b] or (self.options.experimental and self.experimental[b] or nil)
+        self.commandIndex = index
         self.didCommand = false
       end
     end
-    
-    if self.ptr == ptr then
-      self.ptr = self.ptr + 1
-    end
-    
+        
     if self.ptr > #self.program and self.command and not self.didCommand then
       self:command()
       self.didCommand = true
@@ -79,10 +82,57 @@ function C:exec(program)
   end
 end
 
+function C:next()
+  local c = self:nextChar()
+  local index = nil
+  local ptr = self.ptr
+  local cur = self:nextChar()
+  while cur do
+    if self.codepage:faceindex(cur) then
+      index = self.codepage:faceindex(cur)
+    elseif self.codepage:constindex(cur) then
+      if type(index) ~= "string" then
+        index = ""
+      end
+      index = index .. self.codepage:constindex(cur)
+    else
+      break
+    end
+    ptr = self.ptr
+    cur = self:nextChar()
+  end
+  self.ptr = ptr
+  
+  return c, tonumber(index)
+end
+
+function C:nextChar()
+  local c = self.program[self.ptr]
+  if c == "\\" then
+    local charsLeft = 2
+    local hex = 0
+    self.ptr = self.ptr + 1
+    local cur = self.program[self.ptr]
+    local b = c:byte(1)
+    while cur and charsLeft > 0 and self.codepage:hex(cur) do
+      hex = hex * 16 + self.codepage:hex(cur)
+      
+      self.ptr = self.ptr + 1
+      cur = self.program[self.ptr]
+      charsLeft = charsLeft - 1
+    end
+    c = self.codepage.chars[hex]
+  else
+    self.ptr = self.ptr + 1
+  end
+  return c
+end
+
 function C:skipcmd()
   local level = 0
   local c = self.program[self.ptr]
   local extraSkip
+  local ptr = self.ptr
   repeat
     extraSkip = self.options.experimental and c == "?"
     
@@ -93,99 +143,123 @@ function C:skipcmd()
         level = level - 1
       end
       
-      self.ptr = self.ptr + 1
-      c = self.program[self.ptr]
-    until self.ptr > #self.program or (level == 0 and not tonumber(c))
+      ptr = self.ptr
+      c = self:next()
+    until self.ptr > #self.program or (level == 0 and not self.codepage:facearg(c) and not self.codepage:constarg(c))
   until not extraSkip
+  self.ptr = ptr
 end
 
-function C:value(n)
+function C:value(n, index)
   if n % 1 ~= 0 then
     return 0
   end
   
   if n >= 0 and n <= 5 then
-    return self.cube:value(n)
+    return self.cube:value(n, index)
   elseif n == 6 then
     return self.notepad
   elseif n == 7 then
     return self.input
   elseif n == 8 then
-    return self.cube:solved() and 1 or 0
+    return self.cube:solved() and 0 or 1
   else
     return 0
   end
 end
 
 C.commands = {
-  ['Rn'] = function(self, n)
-    self.cube:R(n, self.subscript)
+  ['R'] = function(self, n)
+    self.cube:R(n or 1, self.commandIndex)
   end,
-  ['Ln'] = function(self, n)
-    self.cube:L(n, self.subscript)
+  ['L'] = function(self, n)
+    self.cube:L(n or 1, self.commandIndex)
   end,
-  ['Un'] = function(self, n)
-    self.cube:U(n, self.subscript)
+  ['U'] = function(self, n)
+    self.cube:U(n or 1, self.commandIndex)
   end,
-  ['Dn'] = function(self, n)
-    self.cube:D(n, self.subscript)
+  ['D'] = function(self, n)
+    self.cube:D(n or 1, self.commandIndex)
   end,
-  ['Fn'] = function(self, n)
-    self.cube:F(n, self.subscript)
+  ['F'] = function(self, n)
+    self.cube:F(n or 1, self.commandIndex)
   end,
-  ['Bn'] = function(self, n)
-    self.cube:B(n, self.subscript)
+  ['B'] = function(self, n)
+    self.cube:B(n or 1, self.commandIndex)
   end,
   
   [':n'] = function(self, n)
-    self.notepad = self:value(n)
+    self.notepad = n
   end,
   ['+n'] = function(self, n)
-    self.notepad = self.notepad + self:value(n)
+    self.notepad = (self.commandIndex or self.notepad) + n
   end,
   ['-n'] = function(self, n)
-    self.notepad = self.notepad - self:value(n)
+    self.notepad = (self.commandIndex or self.notepad) - n
   end,
   ['*n'] = function(self, n)
-    self.notepad = self.notepad * self:value(n)
+    self.notepad = (self.commandIndex or self.notepad) * n
   end,
   ['/n'] = function(self, n)
-    self.notepad = math.floor(self.notepad / self:value(n))
+    self.notepad = (self.commandIndex or self.notepad) / n
   end,
-  ['^n'] = function(self, n)
-    self.notepad = self.notepad ^ self:value(n)
+  ['ⁿ'] = function(self, n)
+    self.notepad = (n or self.notepad) ^ (self.commandIndex or 2)
   end,
-  ['_xn'] = function(self, n)
-    self.notepad = self.notepad % self:value(n)
+  ['%n'] = function(self, n)
+    self.notepad = (self.commandIndex or self.notepad) % n
   end,
-  ['sxn'] = function(self, n)
-    self.notepad = bit32.arshift(self.notepad, self:value(n))
+  ['√'] = function(self, n)
+    self.notepad = (n or self.notepad) ^ (1 / (self.commandIndex or 2))
   end,
-  ['"xn'] = function(self, n)
-    self.notepad = bit32.band(self.notepad, self:value(n))
+  ['ṡ'] = function(self, n)
+    self.notepad = math.sin(n or self.notepad)
   end,
-  ['|xn'] = function(self, n)
-    self.notepad = bit32.bor(self.notepad, self:value(n))
+  ['ċ'] = function(self, n)
+    self.notepad = math.cos(n or self.notepad)
   end,
-  ['`xn'] = function(self, n)
-    self.notepad = bit32.bxor(self.notepad, self:value(n))
+  ['Ṡ'] = function(self, n)
+    self.notepad = math.asin(n or self.notepad)
   end,
-  ["nx"] = function(self, n)
-    self.notepad = n and -self:value(n) or -self.notepad
+  ['Ċ'] = function(self, n)
+    self.notepad = math.acos(n or self.notepad)
+  end,
+  
+  ['~'] = function(self, n)
+    self.notepad = -(n or self.notepad)
+  end,
+  
+  ['«'] = function(self, n)
+    self.notepad = bit32.arshift(self.commandIndex or self.notepad, -(n or 1))
+  end,
+  ['»'] = function(self, n)
+    self.notepad = bit32.arshift(self.commandIndex or self.notepad, n or 1)
+  end,
+  ['&n'] = function(self, n)
+    self.notepad = bit32.band(self.commandIndex or self.notepad, n)
+  end,
+  ['|n'] = function(self, n)
+    self.notepad = bit32.bor(self.commandIndex or self.notepad, n)
+  end,
+  ['^'] = function(self, n)
+    self.notepad = n and bit32.bxor(self.commandIndex or self.notepad, n) or bit32.bnot(self.commandIndex or self.notepad)
+  end,
+  ['¬'] = function(self, n)
+    self.notepad = (n or self.notepad) == 0 and 1 or 0
   end,
   
   ['>n'] = function(self, n)
-    self.notepad = (self.notepad > self:value(n)) and 1 or 0
+    self.notepad = ((self.commandIndex or self.notepad) > n) and 1 or 0
   end,
   ['<n'] = function(self, n)
-    self.notepad = (self.notepad < self:value(n)) and 1 or 0
+    self.notepad = ((self.commandIndex or self.notepad) < n) and 1 or 0
   end,
   ['=n'] = function(self, n)
-    self.notepad = (self.notepad == self:value(n)) and 1 or 0
+    self.notepad = ((self.commandIndex or self.notepad) == n) and 1 or 0
   end,
   
-  ['&'] = function(self, n)
-    if not n or self:value(n) ~= 0 then
+  ['.'] = function(self, n)
+    if not n or n ~= 0 then
       self.program = {}
     end
   end, 
@@ -211,22 +285,24 @@ C.commands = {
     else
       label.args = nil
     end
+    
+    label.index = self.commandIndex
   end,
   [')'] = function(self, n)
     local label = table.remove(self.loops)
     if label then
-      if (not n or self:value(n) ~= 0) and (not label.args or table.iterator(label.args).any(function(arg) return self:value(arg) ~= 0 end)) then
+      if (not n or n ~= 0) and (not label.args or table.iterator(label.args):any(function(arg) return self:value(arg) ~= 0 end)) then
         -- Jump to the `(`
         self.ptr = label.ptr
         return
       else
-        -- TODO: this should jump if *any* of the arguments are true, not only if the first one is
+        self.ptr = self.ptr - 1
         self:skipcmd()
       end
     end
   end,
-  ['?n'] = function(self, n)
-    if self:value(n) == 0 then
+  ['?'] = function(self, n)
+    if (n or self.notepad) == 0 then
       self.conditionFailed = true
       if not self.options.experimental then
         self:skipcmd()
@@ -258,7 +334,7 @@ C.commands = {
       
       if not n then
         self.conditionFailed = false
-      elseif self:value(n) == 0 then
+      elseif n == 0 then
         self.conditionFailed = true
         if not self.options.experimental then
           self:skipcmd()
@@ -272,7 +348,7 @@ C.commands = {
       end
     else
       if n then
-        if self:value(n) == 0 then
+        if n == 0 then
           self.conditionFailed = false
         else
           self.conditionFailed = true
@@ -285,18 +361,38 @@ C.commands = {
     end
   end,
   
-  ['@n'] = function(self, n)
-    io.write(string.char(self:value(n) % 256))
+  ['"'] = function(self, n)
+    -- TODO: Maybe make the index select what base to output this in?
+    io.write(tostring(n or self.notepad))
   end,
-  ['%n'] = function(self, n)
-    io.write(self:value(n))
+  ['@'] = function(self, n)
+    io.write(string.char(math.floor(n or self.notepad) % 256))
   end,
   ['$'] = function(self, n)
     self.input = io.read("*n") or self.input
   end,
-  ['~'] = function(self, n)
+  ['_'] = function(self, n)
     local inp = io.read(1)
     self.input = inp and string.byte(inp) or -1
+  end,
+  
+  ['■'] = function(self, n)
+    self.cube = Cube.new(n)
+  end,
+  ['fi'] = function(self, n)
+    self.cube:setFace(self.commandIndex, n)
+  end,
+  
+  ['p'] = function(self, n)
+    n = n or self.notepad
+    local sqrt = math.sqrt(n)
+    for i = 2, sqrt do
+      if i % n == 0 then
+        self.notepad = 0
+        return
+      end
+    end
+    self.notepad = 1
   end,
   
   ['#x'] = function(self, n)
@@ -310,13 +406,21 @@ C.commands = {
 -- Parse commands
 C.commands = table.iterator(C.commands)
   :select(function(cmd, func)
-    local args = cmd:sub(2)
-    cmd = cmd:sub(1, 1)
+    local chars = Codepage:utf8raw( cmd)
+    cmd = Codepage.bytes[chars[1]]
+    local args = table.concat(chars, "", 2)
         
     if args:match("n") then
       local f = func
       func = function(self, n)
         return n and f(self, n) or nil
+      end
+    end
+    
+    if args:match("i") then
+      local f = func
+      func = function(self, n)
+        return self.commandIndex and f(self, n) or nil
       end
     end
     
@@ -335,8 +439,5 @@ C.commands = table.iterator(C.commands, true)
   :unpack()
   :where(function(cmd, args, func) return not args:match("x") end)
   :totable(function(cmd, args, func) return cmd end, function(cmd, args, func) return func end)
-
--- Obsolete commands
-C.commands['E'] = C.commands['&']
 
 _G.Cubically = C

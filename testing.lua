@@ -7,7 +7,7 @@ interpreter:exec(program)
 
 print()
 print("===========")
-print("Program size: " .. #Cubically.codepage.utf8bytes(program) .. " bytes (" .. #program .. " in ASCII).")
+print("Program size: " .. #Codepage:utf8bytes(program) .. " bytes (" .. #program .. " in ASCII).")
 print("-----------")
 print("Final state:")
 interpreter:exec("#")
