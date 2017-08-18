@@ -69,7 +69,7 @@ function C:exec(program)
       
       if self.ptr == ptr then
         -- Call the current command if the pointer didn't move
-        self.command = self.commands[b] or (self.options.experimental and self.experimental[b] or nil)
+        self.command = self.commands[b]
         self.commandIndex = index
         self.didCommand = false
       end
@@ -134,7 +134,7 @@ function C:skipcmd()
   local extraSkip
   local ptr = self.ptr
   repeat
-    extraSkip = self.options.experimental and c == "?"
+    extraSkip = c == "?"
     
     repeat
       if c == "{" then
@@ -304,60 +304,36 @@ C.commands = {
   ['?'] = function(self, n)
     if (n or self.notepad) == 0 then
       self.conditionFailed = true
-      if not self.options.experimental then
-        self:skipcmd()
-      end
     else
       self.conditionFailed = false
-      if self.options.experimental then
-        self:skipcmd()
-      end
+      self:skipcmd()
     end
   end,
   ['{'] = function(self, n) end,
   ['}'] = function(self, n) end,
   ['!'] = function(self, n)
-    if self.options.experimental then
-      if not self.doElse then
-        if n then
-          if self.program[self.ptr - 1] == "!" then
-            self:skipcmd()
-            self.conditionFailed = true
-            return
-          end
-        else
+    if not self.doElse then
+      if n then
+        if self.program[self.ptr - 1] == "!" then
           self:skipcmd()
           self.conditionFailed = true
           return
         end
-      end
-      
-      if not n then
-        self.conditionFailed = false
-      elseif n == 0 then
-        self.conditionFailed = true
-        if not self.options.experimental then
-          self:skipcmd()
-        end
-      elseif self.options.experimental then
-        self.conditionFailed = false
-        self.doElse = false
-        if self.options.experimental then
-          self:skipcmd()
-        end
-      end
-    else
-      if n then
-        if n == 0 then
-          self.conditionFailed = false
-        else
-          self.conditionFailed = true
-          self:skipcmd()
-        end
-      elseif not self.doElse then
+      else
         self:skipcmd()
         self.conditionFailed = true
+        return
       end
+    end
+    
+    if not n then
+      self.conditionFailed = false
+    elseif n == 0 then
+      self.conditionFailed = true
+    else
+      self.conditionFailed = false
+      self.doElse = false
+      self:skipcmd()
     end
   end,
   
@@ -379,7 +355,7 @@ C.commands = {
   ['■'] = function(self, n)
     self.cube = Cube.new(n)
   end,
-  ['fi'] = function(self, n)
+  ['ƒi'] = function(self, n)
     self.cube:setFace(self.commandIndex, n)
   end,
   
@@ -395,7 +371,7 @@ C.commands = {
     self.notepad = 1
   end,
   
-  ['#x'] = function(self, n)
+  ['`'] = function(self, n)
     print(self.cube:tostring())
     print("Notepad: " .. self.notepad)
     print("Input: " .. self.input)
@@ -426,18 +402,6 @@ C.commands = table.iterator(C.commands)
     
     return cmd, args, func
   end)
-  :totable()
-
--- Create the experimental commands list
-C.experimental = table.iterator(C.commands, true)
-  :unpack()
-  :where(function(cmd, args, func) return args:match("x") end)
-  :totable(function(cmd, args, func) return cmd end, function(cmd, args, func) return func end)
-
--- Remove experimental commands from main commands list
-C.commands = table.iterator(C.commands, true)
-  :unpack()
-  :where(function(cmd, args, func) return not args:match("x") end)
   :totable(function(cmd, args, func) return cmd end, function(cmd, args, func) return func end)
 
 _G.Cubically = C
