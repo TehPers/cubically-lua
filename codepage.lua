@@ -174,14 +174,18 @@ function Codepage:tobytes(str)
   return bytes
 end
 
-function Codepage:constarg(char, index)
+function Codepage:arg(char, index)
   if type(char) == "string" then
     char = self.bytes[char]
   end
   
   if char >= 0xA0 and char < 0xAA then
+    -- Normal constant
     local r = char - 0xA0
     return index and tonumber(r .. index) or r
+  elseif char >= 0x30 and char < 0x3A then
+    -- Face
+    return self.cubically:value(char - 0x30, index)
   elseif char == 0x27 then
     -- Treat each apostrophe as a 3
     return 3
@@ -236,16 +240,6 @@ function Codepage:charset(char, index)
   elseif char == 0x43 or char == 0x63 then
     -- Codepage
     return self.chars[index] or 0
-  end
-end
-
-function Codepage:facearg(char, index)
-  if type(char) == "string" then
-    char = self.bytes[char]
-  end
-  
-  if char >= 0x30 and char < 0x3A then
-    return self.cubically:value(char - 0x30, index)
   end
 end
 

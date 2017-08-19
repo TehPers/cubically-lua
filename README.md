@@ -135,6 +135,7 @@ Unchanged from normal Cubically
 |-------|-----------|-------------|-----------|
 |`■`|Sets the cube to a new cube with size `n`||3|
 |`ƒ`|Sets the value of squares on the face specified by the index to `n`||The original value|
+|`𝔸`|Set the accumulator at the given index to `n`|0|Current value + 1, or 0 if not set|
 |`` ` ``|Prints debugging information|||
 
 ### Constant arguments vs. face-valued arguments
@@ -146,6 +147,7 @@ Unchanged from normal Cubically
 - Use normal digits to pass face-valued arguments to commands.
   - These arguments, by default, pass the sum of every square on the given face to the command
   - If an index is specified, it passes the square on the given face at the given index to the command
+- `𝕒` will pass the accumulator value at the given index (or index 0) to the command
 
 ### Indexed commands and indexed arguments
 - You can specify an index when loading a command or argument

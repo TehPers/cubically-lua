@@ -37,17 +37,10 @@ function C:exec(program)
     local b, index = self:next()
     local ptr = self.ptr
     
-    if self.codepage:facearg(b, index) then
+    if self.codepage:arg(b, index) then
       -- Face-valued command argument
       if self.command then
-        self:command(self.codepage:facearg(b, index))
-        self.didCommand = true
-        self.doElse = false
-      end
-    elseif self.codepage:constarg(b, index) then
-      -- Constant command argument
-      if self.command then
-        self:command(self.codepage:constarg(b, index))
+        self:command(self.codepage:arg(b, index))
         self.didCommand = true
         self.doElse = false
       end
@@ -151,7 +144,7 @@ function C:skipcmd()
       
       ptr = self.ptr
       c = self.codepage.chars[self:next()]
-    until self.ptr > #self.program or (level == 0 and not self.codepage:facearg(c) and not self.codepage:constarg(c))
+    until self.ptr > #self.program or (level == 0 and not self.codepage:arg(c))
   until not extraSkip
   self.ptr = ptr
 end
