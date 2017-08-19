@@ -12,6 +12,7 @@ function C.new(options)
     cube = Cube.new(options.size),
     notepad = 0,
     input = 0,
+    accumulator = {},
     options = options
   }, {__index = C})
 
@@ -362,6 +363,10 @@ C.commands = {
   end,
   ['ƒi'] = function(self, n)
     self.cube:setFace(self.commandIndex, n)
+  end,
+  ['𝔸'] = function(self, n)
+    local accum = self.accumulator[self.commandIndex or 0]
+    self.accumulator[self.commandIndex or 0] = n or (accum and (accum + 1) or 0)
   end,
   
   ['ρ'] = function(self, n)

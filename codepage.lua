@@ -139,17 +139,17 @@ function Codepage:utf8bytes(str)
       bytesleft = bytesleft - 1
       
       if bytesleft == 0 then
-        table.insert(bytes, Codepage.bytes[cur])
+        table.insert(bytes, self.bytes[cur])
         cur = nil
       end
     else
       -- 1 byte character
       if cur then
-        table.insert(bytes, Codepage.bytes[cur])
+        table.insert(bytes, self.bytes[cur])
         cur = nil
       end
       
-      table.insert(bytes, Codepage.bytes[ascii[b]])
+      table.insert(bytes, self.bytes[ascii[b]])
       bytesleft = 0
     end
     ptr = ptr + 1
@@ -169,14 +169,14 @@ end
 function Codepage:tobytes(str)
   local bytes = {}
   for i, v in ipairs(str) do
-    bytes[i] = Codepage.bytes[v]
+    bytes[i] = self.bytes[v]
   end
   return bytes
 end
 
 function Codepage:constarg(char, index)
   if type(char) == "string" then
-    char = Codepage.bytes[char]
+    char = self.bytes[char]
   end
   
   if char >= 0xA0 and char < 0xAA then
@@ -197,6 +197,9 @@ function Codepage:constarg(char, index)
   elseif char == 0xB3 then
     -- e
     return 2.718281828459045
+  elseif char == 0xC2 then
+    -- accumulator
+    return self.cubically.accumulator[index or 0] or 0
   elseif char > 0x100 then
     -- Character set
     return self:charset(char - 0x100, index)
@@ -205,42 +208,40 @@ end
 
 function Codepage:charset(char, index)
   if type(char) == "string" then
-    char = Codepage.bytes[char]
+    char = self.bytes[char]
   end
   
-  -- TODO: codepage
+  index = index or 0
+  
   -- Note: ASCII is already default, no need for a charset for it
   
   if char == 0x44 or char == 0x64 then
     -- Digits
-    if not index then
-      return
-    elseif index < 0 or index > 9 or index % 1 ~= 0 then
+    if index < 0 or index > 9 or index % 1 ~= 0 then
       return 0
     end
     return index + 0x30
   elseif char == 0x41 then
     -- Uppercase
-    if not index then
-      return
-    elseif index < 0 or index > 25 or index % 1 ~= 0 then
+    if index < 0 or index > 25 or index % 1 ~= 0 then
       return 0
     end
     return index + 0x41
   elseif char == 0x61 then
     -- Lowercase
-    if not index then
-      return
-    elseif index < 0 or index > 25 or index % 1 ~= 0 then
+    if index < 0 or index > 25 or index % 1 ~= 0 then
       return 0
     end
     return index + 0x61
+  elseif char == 0x43 or char == 0x63 then
+    -- Codepage
+    return self.chars[index] or 0
   end
 end
 
 function Codepage:facearg(char, index)
   if type(char) == "string" then
-    char = Codepage.bytes[char]
+    char = self.bytes[char]
   end
   
   if char >= 0x30 and char < 0x3A then
@@ -250,7 +251,7 @@ end
 
 function Codepage:constindex(char)
   if type(char) == "string" then
-    char = Codepage.bytes[char]
+    char = self.bytes[char]
   end
   
   if char >= 0x80 and char < 0x8A then
@@ -260,7 +261,7 @@ end
 
 function Codepage:faceindex(char)
   if type(char) == "string" then
-    char = Codepage.bytes[char]
+    char = self.bytes[char]
   end
   
   if char >= 0x90 and char < 0x9A then
@@ -270,7 +271,7 @@ end
 
 function Codepage:hex(char)
   if type(char) == "string" then
-    char = Codepage.bytes[char]
+    char = self.bytes[char]
   end
   
   if char >= 0x30 and char <= 0x39 then
