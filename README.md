@@ -86,18 +86,20 @@ The notepad's value was changed from an integer type to a floating point type.
 ### Arithmetic
 |Command|Description|Default index|Default `n`|
 |-------|-----------|-------------|-----------|
-|`+`|Sets the notepad to the index plus `n`|Notepad||
-|`-`|Sets the notepad to the index minus `n`|Notepad||
-|`*`|Sets the notepad to the index times `n`|Notepad||
-|`/`|Sets the notepad to the index divided by `n`|Notepad||
+|`:`|Sets the notepad to `n`||0|
+|`+`|Sets the notepad to the index plus `n`|Notepad|1|
+|`-`|Sets the notepad to the index minus `n`|Notepad|1|
+|`*`|Sets the notepad to the index times `n`|Notepad|2|
+|`/`|Sets the notepad to the index divided by `n`|Notepad|2|
 |`%`|Sets the notepad to the index (mod `n`)|Notepad||
-|`ⁿ`|Sets the notepad to the index raised to `n`|Notepad||
+|`ⁿ`|Sets the notepad to the index raised to `n`|Notepad|2|
 |`√`|Sets the notepad to the index'th root of `n`|2|Notepad|
-|`~`|Multiplies `n` by -1||Notepad|
-|`ṡ`|Caculates the sine of `n` degrees||Notepad|
-|`ċ`|Caculates the cosine of `n` degrees||Notepad|
-|`Ṡ`|Calculates the sine⁻¹ of `n`||Notepad|
-|`Ċ`|Calculates the cosine⁻¹ of `n`||Notepad|
+|`l`|Sets the notepad to the index'th logarithm of `n`|10|Notepad|
+|`~`|Sets the notepad to `n` times -index|1|Notepad|
+|`ṡ`|Sets the notepad to the sine of `n` degrees||Notepad|
+|`ċ`|Sets the notepad to the cosine of `n` degrees||Notepad|
+|`Ṡ`|Sets the notepad to the sine⁻¹ of `n`||Notepad|
+|`Ċ`|Sets the notepad to the cosine⁻¹ of `n`||Notepad|
 
 ### Binary arithmetic
 |Command|Description|Default index|Default `n`|

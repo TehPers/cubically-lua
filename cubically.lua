@@ -187,20 +187,20 @@ C.commands = {
     self.cube:B(n or 1, self.commandIndex)
   end,
   
-  [':n'] = function(self, n)
-    self.notepad = n
+  [':'] = function(self, n)
+    self.notepad = n or 0
   end,
-  ['+n'] = function(self, n)
-    self.notepad = (self.commandIndex or self.notepad) + n
+  ['+'] = function(self, n)
+    self.notepad = (self.commandIndex or self.notepad) + (n or 1)
   end,
-  ['-n'] = function(self, n)
-    self.notepad = (self.commandIndex or self.notepad) - n
+  ['-'] = function(self, n)
+    self.notepad = (self.commandIndex or self.notepad) - (n or 1)
   end,
-  ['*n'] = function(self, n)
-    self.notepad = (self.commandIndex or self.notepad) * n
+  ['*'] = function(self, n)
+    self.notepad = (self.commandIndex or self.notepad) * (n or 2)
   end,
-  ['/n'] = function(self, n)
-    self.notepad = (self.commandIndex or self.notepad) / n
+  ['/'] = function(self, n)
+    self.notepad = (self.commandIndex or self.notepad) / (n or 2)
   end,
   ['ⁿ'] = function(self, n)
     self.notepad = (n or self.notepad) ^ (self.commandIndex or 2)
@@ -210,6 +210,12 @@ C.commands = {
   end,
   ['√'] = function(self, n)
     self.notepad = (n or self.notepad) ^ (1 / (self.commandIndex or 2))
+  end,
+  ['l'] = function(self, n) -- TODO: Find a new character for this
+    self.notepad = math.log(n or self.notepad, self.commandIndex or 10)
+  end,
+  ['~'] = function(self, n)
+    self.notepad = (n or self.notepad) * -(self.commandIndex or 1)
   end,
   ['ṡ'] = function(self, n)
     self.notepad = math.sin(n or self.notepad)
@@ -222,10 +228,6 @@ C.commands = {
   end,
   ['Ċ'] = function(self, n)
     self.notepad = math.acos(n or self.notepad)
-  end,
-  
-  ['~'] = function(self, n)
-    self.notepad = -(n or self.notepad)
   end,
   
   ['«'] = function(self, n)
@@ -357,9 +359,8 @@ C.commands = {
   ['ƒi'] = function(self, n)
     self.cube:setFace(self.commandIndex, n)
   end,
-  ['𝔸'] = function(self, n)
-    local accum = self.accumulator[self.commandIndex or 0]
-    self.accumulator[self.commandIndex or 0] = n or (accum and (accum + 1) or 0)
+  ['𝔸'] = function(self, n)  
+    self.accumulator[self.commandIndex or 0] = n or ((self.accumulator[self.commandIndex or 0] or 1) - 1)
   end,
   
   ['ρ'] = function(self, n)
